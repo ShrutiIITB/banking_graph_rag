@@ -3,6 +3,11 @@
 A local, fully offline Graph Retrieval-Augmented Generation (RAG) chatbot built on **FalkorDB**, **LangGraph**, and **Streamlit**. Ask natural-language questions about customers, transactions, loans, credit cards, and feedback -- the agent automatically converts them into Cypher queries, runs them against the graph database, and returns grounded answers.
 
 ---
+<image>![Graph View](image.png)
+
+
+<image>![Chat View](image-1.png)
+---
 
 ## Table of contents
 
@@ -192,34 +197,11 @@ banking_graph_rag/
 | Docker Desktop| Latest   | For running FalkorDB locally                  |
 | Git           | Any      | To clone the repo                             |
 
-### Accounts / keys
 
-| Service   | Purpose              | Where to get                        |
-|-----------|----------------------|-------------------------------------|
-| OpenAI    | LLM (Cypher + answer)| https://platform.openai.com/api-keys|
 
 ---
 
-## Step-by-step setup
 
-### 1. Clone and enter the project
-
-```bash
-git clone <your-repo-url>
-cd banking_graph_rag
-```
-
-### 2. Create a virtual environment
-
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# macOS / Linux
-python -m venv venv
-source venv/bin/activate
-```
 
 ### 3. Install Python dependencies
 
@@ -278,278 +260,6 @@ docker ps
 # You should see falkordb/falkordb listed
 ```
 
-### 6. Download the dataset
-
-Download `Comprehensive_Banking_Database.csv` from:
-
-```
-https://github.com/ahsan084/Banking-Dataset/blob/main/Comprehensive_Banking_Database.csv
-```
-
-Place it in the project root (same folder as `ingest.py`).
-
-### 7. Ingest the CSV into FalkorDB
-
-```bash
-python ingest.py
-```
-
-Expected output:
-
-```
-============================================================
-  Banking Graph RAG -- Data Ingestion (40-column schema)
-============================================================
-[INFO] Reading Comprehensive_Banking_Database.csv ...
-[INFO] Loaded 10,000 rows.
-[INFO] Cleaning and normalising data ...
-[INFO] 10,000 rows ready for ingestion.
-[INFO] Connecting to FalkorDB at localhost:6379 ...
-[INFO] Connected -> graph: 'banking'
-[INFO] Creating indexes ...
-[INFO] Ingesting Customer nodes ...
-  Customers             10000 rows [====================] 100%
-[INFO] Ingesting Account nodes ...
-...
-[INFO] Verification counts ...
-  Customer nodes              2,000
-  Account nodes               3,800
-  Transaction nodes          10,000
-  Branch nodes                   12
-  Loan nodes                  8,500
-  CreditCard nodes            9,200
-  Feedback nodes              6,300
-  HAS_ACCOUNT edges          10,000
-  MADE_TRANSACTION edges     10,000
-  AT_BRANCH edges            10,000
-  HAS_LOAN edges              8,500
-  HAS_CARD edges              9,200
-  GAVE_FEEDBACK edges         6,300
-[DONE] Ingestion complete in 38.4s
-```
-
-> **Re-ingesting from scratch:** add the `--reset` flag to wipe and reload:
-> ```bash
-> python ingest.py --reset
-> ```
-
----
-
-## Running the app
-
-```bash
-streamlit run app.py
-```
-
-The browser opens automatically at `http://localhost:8501`.
-
----
-
-## Using the chatbot
-
-1. Open the app at `http://localhost:8501`
-2. The sidebar shows the database status (node and edge counts)
-3. If the graph is empty, enter the CSV path in the sidebar and click **Run Ingest**
-4. Use the **Chat** page (selected in the sidebar navigation)
-5. Type a question in the chat box, or click one of the sample question buttons
-6. The agent decomposes your question, generates Cypher, queries FalkorDB, and returns a grounded answer
-
-### How multi-query works
-
-A complex question is automatically split into simpler sub-questions:
-
-```
-User: "Which city has the most customers with approved loans over $50,000?"
-
-  Sub-query 1: "Which city has the most customers?"
-  Sub-query 2: "Which customers have an approved loan above $50,000?"
-
-  --> Cypher generated for each
-  --> Both run against FalkorDB
-  --> Results merged into a single answer
-```
-
----
-
-## Using the graph explorer
-
-Switch to the **Graph View** page in the sidebar navigation.
-
-### Controls
-
-| Control               | Description                                      |
-|-----------------------|--------------------------------------------------|
-| Node types            | Select which node labels to show                 |
-| Relationship types    | Select which edge types to draw                  |
-| Max nodes per type    | Slider 5-100 -- controls sample size per label    |
-| Show node labels      | Toggle display names on nodes                    |
-| Show properties on hover | Toggle tooltip with node details              |
-
-### Node colours
-
-| Node label  | Colour  |
-|-------------|---------|
-| Customer    | Purple  |
-| Account     | Teal    |
-| Transaction | Coral   |
-| Branch      | Gray    |
-| Loan        | Amber   |
-| CreditCard  | Blue    |
-| Feedback    | Green   |
-
-### Interaction
-
-- **Drag** nodes to rearrange
-- **Scroll** to zoom in/out
-- **Hover** over a node to see its properties
-- **Click** a node to highlight its connections
-
-### Raw Cypher explorer
-
-At the bottom of the Graph View page there is a **Raw Cypher explorer** panel. Type any read-only Cypher query and click **Run query** to see results as a table. Write operations (`CREATE`, `MERGE`, `DELETE`, `SET`) are blocked.
-
-Example:
-
-```cypher
-MATCH (c:Customer)-[:HAS_LOAN]->(l:Loan)
-WHERE l.status = 'Approved' AND l.amount > 50000
-RETURN c.first_name, c.last_name, c.city, l.amount
-ORDER BY l.amount DESC
-LIMIT 10
-```
-
----
-
-## Sample questions
-
-### Customers
-
-```
-How many customers are in the database?
-Which city has the most customers?
-Show me all customers over the age of 60.
-What is the gender distribution of customers?
-```
-
-### Accounts
-
-```
-What is the average account balance by account type?
-Which customers have a savings account balance above 50000?
-Which customers have both a savings and a checking account?
-```
-
-### Transactions
-
-```
-Which branch processed the most transactions?
-What is the total deposit amount per branch?
-Show all withdrawal transactions above 10000.
-How many transactions happened in 2023?
-```
-
-### Loans
-
-```
-What is the loan approval rate?
-What is the average loan amount by loan type?
-Which customers have an approved mortgage over 200000?
-What is the total approved loan amount by city?
-```
-
-### Credit cards
-
-```
-Which card type has the highest average credit limit?
-Who has the most rewards points?
-Which customers have overdue credit card payments?
-```
-
-### Feedback
-
-```
-How many unresolved complaints are there?
-What is the breakdown of feedback types?
-Which customers submitted the most complaints?
-```
-
-### Anomaly detection
-
-```
-Show customers flagged as anomalies.
-What types of anomalies exist and how many customers have each?
-Show anomaly-flagged customers who also have a rejected loan.
-```
-
----
-
-## Configuration reference
-
-All settings live in `.env`:
-
-| Variable         | Default       | Description                            |
-|------------------|---------------|----------------------------------------|
-| `OPENAI_API_KEY` | (required)    | Your OpenAI API key                    |
-| `FALKORDB_HOST`  | `localhost`   | FalkorDB host                          |
-| `FALKORDB_PORT`  | `6379`        | FalkorDB port                          |
-| `GRAPH_NAME`     | `banking`     | Name of the graph inside FalkorDB      |
-| `LLM_MODEL`      | `gpt-4o`      | OpenAI model for Cypher + answer gen   |
-
----
-
-## Troubleshooting
-
-### FalkorDB not reachable
-
-```
-Error: Cannot reach FalkorDB at localhost:6379
-```
-
-Make sure Docker Desktop is running and the container is started:
-
-```bash
-docker run -p 6379:6379 --rm falkordb/falkordb:latest
-```
-
-### Graph is empty after ingestion
-
-Re-run with the reset flag:
-
-```bash
-python ingest.py --reset
-```
-
-Check the CSV path is correct. The file must be in the same directory as `injest.py`, or provide an absolute path:
-
-```bash
-python ingest.py --csv "C:\Users\you\Downloads\Comprehensive_Banking_Database.csv" --reset
-```
-
-### SyntaxError on Windows (encoding)
-
-All `.py` files begin with `# -*- coding: utf-8 -*-`. If you still see encoding errors, open the file in VS Code, check the bottom-right encoding indicator, and save as **UTF-8 without BOM**.
-
-### LLM returns write queries
-
-The agent blocks any Cypher containing `CREATE`, `MERGE`, `DELETE`, `SET`, or `DROP`. This is logged as:
-
-```
-Blocked: query contains write operation (CREATE).
-```
-
-This is by design and not an error. The LLM will retry with a read query on the next turn.
-
-### Query returns 0 rows
-
-Check the `[cypher full]` log printed to the terminal. If the Cypher looks wrong, the few-shot examples in `graph_schema.py` can be extended with domain-specific examples matching your actual data values.
-
-### Streamlit port already in use
-
-```bash
-streamlit run app.py --server.port 8502
-```
-
----
 
 ## Tech stack
 
@@ -562,3 +272,5 @@ streamlit run app.py --server.port 8502
 | Graph DB     | FalkorDB (Docker)               | openCypher property graph       |
 | Data loading | Pandas + falkordb Python client | CSV ingestion                   |
 | Config       | python-dotenv                   | Environment variable management |
+
+
